@@ -1,50 +1,73 @@
-minikube start --driver=docker
+# 🐞 Debugging and Troubleshooting Log
 
-3. **Critical Setup Fix (Optional but included in history):** During initial setup, a corrupted `kubectl.exe` was encountered. This was fixed by running the following in an **Administrator PowerShell**:
+This document records key issues encountered during the initial setup of the local Kubernetes cluster using Minikube and Docker on a Windows 11 machine, along with the precise fixes applied.
 
-   <comment-tag id="3">
+---
+
+## Issue 1: Docker Engine Connection Failure
+
+### 🔍 Error Message
+
+During the first attempt to start Minikube, the following error indicated a lack of connectivity to the Docker daemon.
+
+X Exiting due to PROVIDER_DOCKER_VERSION_EXIT_1: "docker version --format <no value>-<no value>:<no value>" exit status 1: error during connect: Get "http://%2F%2F.%2Fpipe%2FdockerDesktopLinuxEngine/v1.48/version": open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified.
+
+### ✅ Resolution
+
+This error typically means the **Docker Desktop application was not running or fully initialized** before Minikube was started.
+
+1.  Ensured **Docker Desktop was launched** and showed the green indicator (running status).
+2.  Executed the `minikube start` command again:
+
+    ```bash
+    minikube start --driver=docker
+    ```
+
+---
+
+## Issue 2: Corrupted `kubectl.exe` Binary
+
+### 🔍 Error Message
+
+After the cluster successfully started (`minikube` command completed), the final step failed with an error indicating the `kubectl` executable was unusable.
+
+E1027 14:05:28.360503 23868 start.go:298] kubectl info: exec: fork/exec C:\WINDOWS\System32\kubectl.exe: The file or directory is corrupted and unreadable.
 
 
-Remove-Item C:\WINDOWS\System32\kubectl.exe -Force winget install Kubernetes.kubectl
+### ✅ Resolution
 
-### B. Deployment Steps
+This required administrative privileges to remove the bad file and reinstall the utility.
 
-Run these commands from the root directory of this repository (where the YAML files are located).
+1.  Opened **PowerShell as Administrator**.
+2.  Forced the removal of the corrupted file:
+    ```powershell
+    Remove-Item C:\WINDOWS\System32\kubectl.exe -Force
+    ```
+3.  Reinstalled/verified the installation of `kubectl` using `winget`:
+    ```powershell
+    winget install Kubernetes.kubectl
+    ```
+4.  Verified the fix:
+    ```bash
+    kubectl version --client
+    kubectl get nodes # Confirmed node was "Ready"
+    ```
 
-| **Step** | **Command** | **Verification** | 
-| **1. Deploy Application** | `kubectl apply -f deployment.yaml` | `kubectl get deployments` | 
-| **2. Verify Pods** | `kubectl get pods` | Wait until all 3 Pods show `STATUS: Running` and `READY: 1/1`. | 
-| **3. Deploy Service** | `kubectl apply -f service.yaml` | `kubectl get services` | 
-| **4. Scale Deployment** | `kubectl scale deployment my-nginx-deployment --replicas=5` | `kubectl get pods` (5 Pods should appear). | 
-| **5. Access Application** | `minikube service my-nginx-service --url` | Copy the resulting URL (e.g., `http://127.0.0.1:61582`) into a web browser. | 
-| **6. Inspect Details (Debugging)** | `kubectl describe deployment my-nginx-deployment` | Review the historical scaling events and current configuration. | 
+---
 
-## 3. Configuration Files
+## Issue 3: Inaccessible Web Application URL
 
-### `deployment.yaml`
+### 🔍 Symptom
 
-<comment-tag id="4">This file defines a desired state of 3 running Nginx web servers.
+The Service was successfully deployed, and `minikube service my-nginx-service --url` returned a local URL (e.g., `http://127.0.0.1:61582`), but the browser connection timed out or failed to open the Nginx page.
 
+### ✅ Resolution
 
-NodePort type exposes the service on a port open on the Minikube host machine
-type: NodePort ports: - protocol: TCP port: 80 targetPort: 80
+When using the **Docker driver on Windows**, NodePort services often require the Minikube tunnel to correctly route traffic from the host operating system to the Docker container network.
 
-
-## 4. Cleanup
-
-To stop and tear down the cluster environment when finished:
-
-```
-# Delete the Deployment and Service resources
-kubectl delete deployment my-nginx-deployment
-kubectl delete service my-nginx-service
-
-# Stop the Minikube VM/Container
-minikube stop
-
-# Delete the Minikube cluster entirely (recommended after a session)
-minikube delete
-
-```
-
-**Author Note:** This project successfully demonstrated the core Kubernetes workflow from installation to application management.
+1.  Opened a **separate, dedicated PowerShell window**.
+2.  Executed and kept running the Minikube tunnel command:
+    ```bash
+    minikube tunnel
+    ```
+3.  In the original terminal, re-ran the URL command, and the application became accessible in the browser.
