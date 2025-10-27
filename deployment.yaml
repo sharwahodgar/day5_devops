@@ -1,0 +1,23 @@
+# deployment.yaml
+# This is the blueprint for our application.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-nginx-deployment
+  labels:
+    app: my-web-app # A label we can use to easily refer to this app
+spec:
+  replicas: 3 # We want 3 copies (Pods) of this app running
+  selector:
+    matchLabels:
+      app: my-web-app
+  template:
+    metadata:
+      labels:
+        app: my-web-app
+    spec:
+      containers:
+      - name: nginx-container
+        image: nginx:latest # The public container image we want to run
+        ports:
+        - containerPort: 80 # The port the Nginx server listens on inside the container

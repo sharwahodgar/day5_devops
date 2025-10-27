@@ -1,0 +1,16 @@
+# service.yaml
+# This exposes our application to the outside world
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-nginx-service
+spec:
+  # This selector connects this Service to the correct Deployment/Pods
+  selector:
+    app: my-web-app
+  # We use NodePort to expose it outside the cluster
+  type: NodePort
+  ports:
+    - protocol: TCP
+      port: 80 # The port the Service itself will listen on
+      targetPort: 80 # The port the Pods (Nginx) are listening on
